@@ -1,0 +1,40 @@
+@startmindmap
+*:Project
+server:https://jira.example.com
+project:MYPRJ;
+
+**[#mediumpurple]:Epic A
+type: Epic
+url: https://jira.example.com/browse/MYPRJ-001;
+
+***:Task A-1
+type: Task
+url: https://jira.example.com/browse/MYPRJ-002;
+
+***:Task A-2
+type: Task
+url: https://jira.example.com/browse/MYPRJ-003;
+
+***:Task A-3
+type: Task
+url: https://jira.example.com/browse/MYPRJ-004;
+
+**[#mediumpurple]:Epic B
+type: Epic;
+
+**[#mediumpurple]:Epic C
+type: Epic
+url: https://jira.example.com/browse/MYPRJ-005;
+
+***:Task C-1
+type: Task
+description: something to do.
+url: https://jira.example.com/browse/MYPRJ-006;
+
+***:Task C-2
+type: Task
+assignee: employee@example.com
+description: something to do.
+url: https://jira.example.com/browse/MYPRJ-007;
+
+@endmindmap

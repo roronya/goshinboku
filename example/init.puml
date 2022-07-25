@@ -1,0 +1,33 @@
+@startmindmap
+*:Project
+server: https://jira.example.com
+project: MYPRJ;
+
+**:Epic A
+type: Epic;
+
+***:Task A-1
+type: Task;
+
+***:Task A-2
+type: Task;
+
+***:Task A-3
+type: Task;
+
+**:Epic B
+type: Epic;
+
+**:Epic C
+type: Epic;
+
+***:Task C-1
+type: Task
+description: something to do.;
+
+***:Task C-2
+type: Task
+assignee: employee@example.com
+description: something to do.;
+
+@endmindmap
