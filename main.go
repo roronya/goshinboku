@@ -9,9 +9,6 @@ import (
 	"os"
 )
 
-type XmindContent struct {
-}
-
 /**
 xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファイルに戻す。
 以下の手順で処理を行う。
@@ -38,13 +35,19 @@ func main() {
 		log.Fatal(err)
 	}
 	dec := json.NewDecoder(contentJsonReader)
+	var c []map[string]interface{} // TODO: 型定義
 	for {
-		var c XmindContent
 		if err := dec.Decode(&c); err == io.EOF {
 			break
 		} else if err != nil {
 			log.Fatal(err)
 		}
+	}
+	// TODO: content.jsonの編集
+
+	j, err := json.Marshal(c)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
@@ -54,8 +57,17 @@ func main() {
 	}
 	dstWriter := zip.NewWriter(dst)
 
+	contentJsonWriter, err := dstWriter.Create("content.json")
+	if _, err := contentJsonWriter.Write(j); err != nil {
+		log.Fatal(err)
+	}
+
 	srcFiles := srcReader.File
 	for _, srcFile := range srcFiles {
+		if srcFile.Name == "content.json" {
+			continue
+		}
+
 		srcFileReader, err := srcFile.Open()
 		if err != nil {
 			log.Fatal(err)
