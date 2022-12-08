@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
+	"github.com/roronya/goshinboku/types"
 	"io"
 	"log"
 	"os"
@@ -35,7 +36,7 @@ func main() {
 		log.Fatal(err)
 	}
 	dec := json.NewDecoder(contentJsonReader)
-	var c []map[string]interface{} // TODO: 型定義
+	var c types.Contents
 	for {
 		if err := dec.Decode(&c); err == io.EOF {
 			break
@@ -44,11 +45,15 @@ func main() {
 		}
 	}
 	// TODO: content.jsonの編集
+	c[0].RootTopic.Children.Attached[0].Title = "modified"
+	c[0].RootTopic.Children.Attached[0].TitleUnedited = false
 
 	j, err := json.Marshal(c)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// fmt.Printf(string(j))
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
 	dst, err := os.Create("./new.xmind")
