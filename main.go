@@ -2,10 +2,15 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
 )
+
+type XmindContent struct {
+}
 
 /**
 xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファイルに戻す。
@@ -24,7 +29,23 @@ func main() {
 	defer srcReader.Close()
 
 	// 2. content.jsonを編集する
-	// TODO
+	contentJsonFile, err := findContentJsonFile(srcReader.File)
+	if err != nil {
+		log.Fatal(err)
+	}
+	contentJsonReader, err := contentJsonFile.Open()
+	if err != nil {
+		log.Fatal(err)
+	}
+	dec := json.NewDecoder(contentJsonReader)
+	for {
+		var c XmindContent
+		if err := dec.Decode(&c); err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
 	dst, err := os.Create("./new.xmind")
@@ -53,6 +74,7 @@ func main() {
 	srcReader.Close()
 	dstWriter.Close()
 
+	/**
 	// 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
 	if err := os.Remove("./sample.xmind"); err != nil {
 		log.Fatal(err)
@@ -60,4 +82,14 @@ func main() {
 	if err := os.Rename("./new.xmind", "./sample.xmind"); err != nil {
 		log.Fatal(err)
 	}
+	*/
+}
+
+func findContentJsonFile(files []*zip.File) (*zip.File, error) {
+	for _, f := range files {
+		if f.Name == "content.json" {
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("cannot find content.json")
 }
