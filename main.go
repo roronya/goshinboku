@@ -20,22 +20,24 @@ xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファ�
 */
 func main() {
 	// 1. xmindファイルを解答しファイルの一覧を得る
-	srcReader, err := zip.OpenReader("./sample.xmind")
+	zr, err := zip.OpenReader("./sample.xmind")
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer srcReader.Close()
+	defer zr.Close()
 
 	// 2. content.jsonを編集する
-	contentJsonFile, err := findContentJsonFile(srcReader.File)
+	f, err := findContentJsonFile(zr.File)
 	if err != nil {
 		log.Fatal(err)
 	}
-	contentJsonReader, err := contentJsonFile.Open()
+	fr, err := f.Open()
 	if err != nil {
 		log.Fatal(err)
 	}
-	dec := json.NewDecoder(contentJsonReader)
+	defer fr.Close()
+
+	dec := json.NewDecoder(fr)
 	var c types.Contents
 	for {
 		if err := dec.Decode(&c); err == io.EOF {
@@ -44,6 +46,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
 	// TODO: content.jsonの編集
 	c[0].RootTopic.Children.Attached[0].Title = "modified"
 	c[0].RootTopic.Children.Attached[0].TitleUnedited = false
@@ -56,13 +59,13 @@ func main() {
 	// fmt.Printf(string(j))
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
-	if err := save(srcReader.File, j); err != nil {
+	if err := save(zr.File, j); err != nil {
 		log.Fatal(err)
 	}
-	srcReader.Close()
 
 	/**
 	// 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
+	zr.Close() // removeする前にcloseしておく
 	if err := os.Remove("./sample.xmind"); err != nil {
 		log.Fatal(err)
 	}
