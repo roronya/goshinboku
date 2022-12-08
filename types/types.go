@@ -1,5 +1,7 @@
 package types
 
+// type of content.json in xmind file
+
 type Contents []Content
 
 type Content struct {

@@ -56,40 +56,10 @@ func main() {
 	// fmt.Printf(string(j))
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
-	dst, err := os.Create("./new.xmind")
-	if err != nil {
+	if err := save(srcReader.File, j); err != nil {
 		log.Fatal(err)
-	}
-	dstWriter := zip.NewWriter(dst)
-
-	contentJsonWriter, err := dstWriter.Create("content.json")
-	if _, err := contentJsonWriter.Write(j); err != nil {
-		log.Fatal(err)
-	}
-
-	srcFiles := srcReader.File
-	for _, srcFile := range srcFiles {
-		if srcFile.Name == "content.json" {
-			continue
-		}
-
-		srcFileReader, err := srcFile.Open()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		dstFileWriter, err := dstWriter.Create(srcFile.Name)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if _, err := io.Copy(dstFileWriter, srcFileReader); err != nil {
-			log.Fatal(err)
-		}
-		srcFileReader.Close()
 	}
 	srcReader.Close()
-	dstWriter.Close()
 
 	/**
 	// 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
@@ -109,4 +79,53 @@ func findContentJsonFile(files []*zip.File) (*zip.File, error) {
 		}
 	}
 	return nil, fmt.Errorf("cannot find content.json")
+}
+
+/**
+元のxmindのFileと新しく作ったcontent.jsonから、新しいxmindファイルを作成する
+*/
+func save(files []*zip.File, c []byte) error {
+	z, err := os.Create("./new.xmind") // TODO: /tmpにユニークな名前で一時ファイルを作る
+	if err != nil {
+		return err
+	}
+
+	zw := zip.NewWriter(z)
+	defer zw.Close()
+
+	fw, err := zw.Create("content.json")
+	if _, err := fw.Write(c); err != nil {
+		return err
+	}
+	for _, file := range files {
+		if file.Name == "content.json" {
+			continue
+		}
+		if err := write(zw, file); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+/**
+zipWriterにfileを書き込む
+安全にfileをcloseするために、ループの本体を関数に書き出す
+*/
+func write(zw *zip.Writer, file *zip.File) error {
+	f, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fw, err := zw.Create(file.Name)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(fw, f); err != nil {
+		return err
+	}
+	return nil
 }
