@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
 /**
@@ -48,9 +49,52 @@ func main() {
 		}
 	}
 
-	// TODO: content.jsonの編集
-	c[0].RootTopic.Children.Attached[0].Title = "modified"
-	c[0].RootTopic.Children.Attached[0].TitleUnedited = false
+	rootTopicTitle := c[0].RootTopic.Title
+	// TODO: 関数化とエラーハンドリング
+	metas := strings.Split(rootTopicTitle, "\n")
+	project := strings.TrimSpace(strings.Split(metas[1], ":")[1])
+	component := strings.TrimSpace(strings.Split(metas[2], ":")[1])
+	epic := strings.TrimSpace(strings.Split(metas[3], ":")[1])
+
+	var leafs []*types.Attached
+	var queue []*types.Attached
+	// for-rangeだとcのポインタをqueueに入れられないのでforで書く
+	for i := 0; i < len(c[0].RootTopic.Children.Attached); i++ {
+		queue = append(queue, &c[0].RootTopic.Children.Attached[i])
+
+	}
+	// 幅優先探索でleafを探す
+	for {
+		if len(queue) == 0 {
+			break
+		}
+		if len(queue[0].Children.Attached) > 0 {
+			for i := 0; i < len(queue[0].Children.Attached); i++ {
+				queue = append(queue, &queue[0].Children.Attached[i])
+			}
+			queue = queue[1:]
+			continue
+		}
+		leafs = append(leafs, queue[0])
+		queue = queue[1:]
+	}
+
+	user := os.Getenv("JIRA_USER")
+	pass := os.Getenv("JIRA_PASSWORD")
+	server := os.Getenv("JIRA_SERVER")
+	client, err := NewClient(user, pass, server)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for i := 0; i < len(leafs); i++ {
+		url, err := IssueCreate(client, project, component, epic, "Task", leafs[i].Title, "", "", "")
+		if err != nil {
+			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leafs[i].Title, err)
+			continue
+		}
+		fmt.Printf("created a ticket titled \"%s\": %s\n", leafs[i].Title, url)
+		leafs[i].Title = fmt.Sprintf("%s\nurl: %s\n", leafs[i].Title, url)
+	}
 
 	j, err := json.Marshal(c)
 	if err != nil {
@@ -64,7 +108,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	/**
 	// 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
 	zr.Close() // removeする前にcloseしておく
 	if err := os.Remove("./sample.xmind"); err != nil {
@@ -73,7 +116,6 @@ func main() {
 	if err := os.Rename("./new.xmind", "./sample.xmind"); err != nil {
 		log.Fatal(err)
 	}
-	*/
 }
 
 func findContentJsonFile(files []*zip.File) (*zip.File, error) {
