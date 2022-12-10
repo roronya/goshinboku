@@ -6,12 +6,16 @@ import (
 )
 
 func TestRootTopic_ParseTitle(t *testing.T) {
-	r := RootTopic{
-		Title: "title\nproject:project\nepic:epic\ncomponent:component",
-	}
+	r := RootTopic{Title: "title\nproject:project\nepic:epic\ncomponent:component"}
 	r.ParseTitle()
-	if r.Project != "project" || r.Epic != "epic" || r.Component != "component" {
-		t.Fatalf("want project=project, epic=epic and component=compoent, but r project=%s, epic=%s and component=%s", r.Project, r.Epic, r.Component)
+	if !(r.Project == "project" && r.Component == "component" && r.Epic == "epic") {
+		t.Fatalf("want project=\"project\", component=\"component\" and epic=\"epic\", but r project=\"%s\", component=\"%s\" and epic=\"%s\"", r.Project, r.Epic, r.Component)
+	}
+
+	r = RootTopic{Title: "title"}
+	r.ParseTitle()
+	if !(r.Project == "" && r.Epic == "" && r.Component == "") {
+		t.Fatalf("want project=\"\", component=\"\" and epic=\"\", but r project=\"%s\", component=\"%s\" and epic=\"%s\"", r.Project, r.Epic, r.Component)
 	}
 }
 
