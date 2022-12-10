@@ -25,9 +25,14 @@ xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファ�
 func main() {
 	flag.BoolVar(&dryrun, "dryrun", false, "skip creating jira tickets if dryrun option is true")
 	flag.Parse()
+	in := flag.Arg(0)
+	if in == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	// 1. xmindファイルを解答しファイルの一覧を得る
-	zr, err := zip.OpenReader("./sample.xmind")
+	zr, err := zip.OpenReader(in)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -110,10 +115,10 @@ func main() {
 
 	// 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
 	zr.Close() // removeする前にcloseしておく
-	if err := os.Remove("./sample.xmind"); err != nil {
+	if err := os.Remove(in); err != nil {
 		log.Fatal(err)
 	}
-	if err := os.Rename(z.Name(), "./sample.xmind"); err != nil {
+	if err := os.Rename(z.Name(), in); err != nil {
 		log.Fatal(err)
 	}
 }
