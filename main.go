@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/roronya/goshinboku/jira"
 	"github.com/roronya/goshinboku/xmind"
@@ -11,7 +12,7 @@ import (
 	"os"
 )
 
-var dryrun = false
+var dryrun bool
 
 /**
 xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファイルに戻す。
@@ -22,6 +23,9 @@ xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファ�
 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
 */
 func main() {
+	flag.BoolVar(&dryrun, "dryrun", false, "skip creating jira tickets if dryrun option is true")
+	flag.Parse()
+
 	// 1. xmindファイルを解答しファイルの一覧を得る
 	zr, err := zip.OpenReader("./sample.xmind")
 	if err != nil {
@@ -60,7 +64,14 @@ func main() {
 
 	leaves := r.FindLeaves()
 
-	if dryrun == false {
+	if dryrun == true {
+		fmt.Println("skipped creating jira tickets because dryrun option is true")
+		fmt.Println("below tickets will be create")
+		fmt.Printf("project:%s\ncomponent:%s\nepic:%s\n", r.Project, r.Component, r.Epic)
+		for i, leaf := range leaves {
+			fmt.Printf("ticket %d: %s", i, leaf.Title)
+		}
+	} else {
 		user := os.Getenv("JIRA_USER")
 		pass := os.Getenv("JIRA_PASSWORD")
 		server := os.Getenv("JIRA_SERVER")
@@ -91,8 +102,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(z.Name())
-	// defer os.Remove(z.Name())
+	defer os.Remove(z.Name())
+
 	if err := save(zr.File, j, z); err != nil {
 		log.Fatal(err)
 	}
