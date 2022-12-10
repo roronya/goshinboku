@@ -49,12 +49,11 @@ func main() {
 		}
 	}
 
-	rootTopicTitle := c[0].RootTopic.Title
-	// TODO: 関数化とエラーハンドリング
-	metas := strings.Split(rootTopicTitle, "\n")
-	project := strings.TrimSpace(strings.Split(metas[1], ":")[1])
-	component := strings.TrimSpace(strings.Split(metas[2], ":")[1])
-	epic := strings.TrimSpace(strings.Split(metas[3], ":")[1])
+	// content.jsonのrootオブジェクトは配列だが、要素は1つなのでc[0]で取得する
+	m := getMetaData(c[0].RootTopic)
+	if m.Project == "" || m.Epic == "" {
+		log.Fatal("RootTopic must be set project and epic")
+	}
 
 	var leafs []*types.Attached
 	var queue []*types.Attached
@@ -87,7 +86,7 @@ func main() {
 		log.Fatal(err)
 	}
 	for i := 0; i < len(leafs); i++ {
-		url, err := IssueCreate(client, project, component, epic, "Task", leafs[i].Title, "", "", "")
+		url, err := IssueCreate(client, m.Project, m.Component, m.Epic, "Task", leafs[i].Title, "", "", "")
 		if err != nil {
 			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leafs[i].Title, err)
 			continue
@@ -264,4 +263,27 @@ func IssueCreate(
 	}
 	baseURL := client.GetBaseURL()
 	return fmt.Sprintf("%sbrowse/%s", baseURL.String(), issue.Key), nil
+}
+
+func getMetaData(r types.RootTopic) MetaData {
+	var m MetaData
+	data := strings.Split(r.Title, "\n")
+	for _, d := range data {
+		s := strings.Split(d, ":")
+		switch s[0] {
+		case "project":
+			m.Project = strings.TrimSpace(s[1])
+		case "component":
+			m.Component = strings.TrimSpace(s[1])
+		case "epic":
+			m.Epic = strings.TrimSpace(s[1])
+		}
+	}
+	return m
+}
+
+type MetaData struct {
+	Project   string
+	Component string
+	Epic      string
 }
