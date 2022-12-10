@@ -1,6 +1,10 @@
 package xmind
 
-import "strings"
+import (
+	"archive/zip"
+	"fmt"
+	"strings"
+)
 
 // struct of content.json in xmind file
 
@@ -91,4 +95,13 @@ type Attached struct {
 
 type Marker struct {
 	MarkerId string `json:"makerId"`
+}
+
+func FindContentJsonFile(files []*zip.File) (*zip.File, error) {
+	for _, f := range files {
+		if f.Name == "content.json" {
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("cannot find content.json")
 }

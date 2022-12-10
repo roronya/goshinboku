@@ -15,7 +15,7 @@ import (
 xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファイルに戻す。
 以下の手順で処理を行う。
 1. xmindファイルの実態はzipであるので、zipを解答し圧縮されたファイルの一覧を得る
-2. content.jsonを編集する
+2. JIRAチケットを作成し、その結果でcontent.jsonを上書きする
 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
 4. 元のxmindファイルを削除し、新しく作ったzipを元の名前にrenameする
 */
@@ -27,8 +27,8 @@ func main() {
 	}
 	defer zr.Close()
 
-	// 2. content.jsonを編集する
-	f, err := findContentJsonFile(zr.File)
+	// 2. JIRAチケットを作成し、その結果でcontent.jsonを上書きする
+	f, err := xmind.FindContentJsonFile(zr.File)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -51,6 +51,7 @@ func main() {
 	// content.jsonのrootオブジェクトは配列だが、要素は1つなのでc[0]で取得する
 	r := c[0].RootTopic
 	r.ParseTitle()
+	// projectとepicが設定されてないとチケットを作れないという仕様にする
 	if r.Project == "" || r.Epic == "" {
 		log.Fatal("RootTopic must be set project and epic")
 	}
@@ -71,15 +72,15 @@ func main() {
 			continue
 		}
 		fmt.Printf("created a ticket titled \"%s\": %s\n", leaves[i].Title, url)
+		// チケットのURLをXMindの葉に書き足す
 		leaves[i].Title = fmt.Sprintf("%s\nurl: %s\n", leaves[i].Title, url)
 	}
 
+	// 構造体からjsonに戻す
 	j, err := json.Marshal(c)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// fmt.Printf(string(j))
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
 	if err := save(zr.File, j); err != nil {
@@ -94,15 +95,6 @@ func main() {
 	if err := os.Rename("./new.xmind", "./sample.xmind"); err != nil {
 		log.Fatal(err)
 	}
-}
-
-func findContentJsonFile(files []*zip.File) (*zip.File, error) {
-	for _, f := range files {
-		if f.Name == "content.json" {
-			return f, nil
-		}
-	}
-	return nil, fmt.Errorf("cannot find content.json")
 }
 
 /**
