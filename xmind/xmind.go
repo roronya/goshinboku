@@ -1,11 +1,13 @@
-package types
+package xmind
 
-// type of content.json in xmind file
+import "strings"
+
+// struct of content.json in xmind file
 
 type Contents []Content
 
 type Content struct {
-	Id               string                   `json:"id""`
+	Id               string                   `json:"id"`
 	Class            string                   `json:"class"`
 	Title            string                   `json:"title"`
 	RootTopic        RootTopic                `json:"rootTopic"`
@@ -22,6 +24,28 @@ type RootTopic struct {
 	StructureClass string   `json:"structureClass"`
 	TitleUnedited  bool     `json:"titleUnedited"`
 	Children       Children `json:"children"`
+
+	// 下記はこのツールのために拡張したプロパティでcontent.jsonには含まれない
+	Project   string
+	Component string
+	Epic      string
+}
+
+// Titleは改行と:で構成されて、JIRAチケットを作るためのメタデータを持っている
+// e.g. Title\nproject:project\ncomponent:component\nepic:epic
+func (r *RootTopic) ParseTitle() {
+	data := strings.Split(r.Title, "\n")
+	for _, d := range data {
+		s := strings.Split(d, ":")
+		switch s[0] {
+		case "project":
+			r.Project = strings.TrimSpace(s[1])
+		case "component":
+			r.Component = strings.TrimSpace(s[1])
+		case "epic":
+			r.Epic = strings.TrimSpace(s[1])
+		}
+	}
 }
 
 type Children struct {

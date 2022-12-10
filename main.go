@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/andygrunwald/go-jira"
-	"github.com/roronya/goshinboku/types"
+	"github.com/roronya/goshinboku/xmind"
 	"io"
 	"log"
 	"os"
-	"strings"
 )
 
 /**
@@ -40,7 +39,7 @@ func main() {
 	defer fr.Close()
 
 	dec := json.NewDecoder(fr)
-	var c types.Contents
+	var c xmind.Contents
 	for {
 		if err := dec.Decode(&c); err == io.EOF {
 			break
@@ -50,13 +49,14 @@ func main() {
 	}
 
 	// content.jsonのrootオブジェクトは配列だが、要素は1つなのでc[0]で取得する
-	m := getMetaData(c[0].RootTopic)
-	if m.Project == "" || m.Epic == "" {
+	r := c[0].RootTopic
+	r.ParseTitle()
+	if r.Project == "" || r.Epic == "" {
 		log.Fatal("RootTopic must be set project and epic")
 	}
 
-	var leafs []*types.Attached
-	var queue []*types.Attached
+	var leafs []*xmind.Attached
+	var queue []*xmind.Attached
 	// for-rangeだとcのポインタをqueueに入れられないのでforで書く
 	for i := 0; i < len(c[0].RootTopic.Children.Attached); i++ {
 		queue = append(queue, &c[0].RootTopic.Children.Attached[i])
@@ -86,7 +86,7 @@ func main() {
 		log.Fatal(err)
 	}
 	for i := 0; i < len(leafs); i++ {
-		url, err := IssueCreate(client, m.Project, m.Component, m.Epic, "Task", leafs[i].Title, "", "", "")
+		url, err := IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leafs[i].Title, "", "", "")
 		if err != nil {
 			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leafs[i].Title, err)
 			continue
@@ -263,27 +263,4 @@ func IssueCreate(
 	}
 	baseURL := client.GetBaseURL()
 	return fmt.Sprintf("%sbrowse/%s", baseURL.String(), issue.Key), nil
-}
-
-func getMetaData(r types.RootTopic) MetaData {
-	var m MetaData
-	data := strings.Split(r.Title, "\n")
-	for _, d := range data {
-		s := strings.Split(d, ":")
-		switch s[0] {
-		case "project":
-			m.Project = strings.TrimSpace(s[1])
-		case "component":
-			m.Component = strings.TrimSpace(s[1])
-		case "epic":
-			m.Epic = strings.TrimSpace(s[1])
-		}
-	}
-	return m
-}
-
-type MetaData struct {
-	Project   string
-	Component string
-	Epic      string
 }
