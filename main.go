@@ -55,28 +55,7 @@ func main() {
 		log.Fatal("RootTopic must be set project and epic")
 	}
 
-	var leafs []*xmind.Attached
-	var queue []*xmind.Attached
-	// for-rangeだとcのポインタをqueueに入れられないのでforで書く
-	for i := 0; i < len(c[0].RootTopic.Children.Attached); i++ {
-		queue = append(queue, &c[0].RootTopic.Children.Attached[i])
-
-	}
-	// 幅優先探索でleafを探す
-	for {
-		if len(queue) == 0 {
-			break
-		}
-		if len(queue[0].Children.Attached) > 0 {
-			for i := 0; i < len(queue[0].Children.Attached); i++ {
-				queue = append(queue, &queue[0].Children.Attached[i])
-			}
-			queue = queue[1:]
-			continue
-		}
-		leafs = append(leafs, queue[0])
-		queue = queue[1:]
-	}
+	leaves := r.FindLeaves()
 
 	user := os.Getenv("JIRA_USER")
 	pass := os.Getenv("JIRA_PASSWORD")
@@ -85,14 +64,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for i := 0; i < len(leafs); i++ {
-		url, err := IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leafs[i].Title, "", "", "")
+	for i := 0; i < len(leaves); i++ {
+		url, err := IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leaves[i].Title, "", "", "")
 		if err != nil {
-			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leafs[i].Title, err)
+			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leaves[i].Title, err)
 			continue
 		}
-		fmt.Printf("created a ticket titled \"%s\": %s\n", leafs[i].Title, url)
-		leafs[i].Title = fmt.Sprintf("%s\nurl: %s\n", leafs[i].Title, url)
+		fmt.Printf("created a ticket titled \"%s\": %s\n", leaves[i].Title, url)
+		leaves[i].Title = fmt.Sprintf("%s\nurl: %s\n", leaves[i].Title, url)
 	}
 
 	j, err := json.Marshal(c)

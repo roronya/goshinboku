@@ -48,6 +48,35 @@ func (r *RootTopic) ParseTitle() {
 	}
 }
 
+func (r *RootTopic) FindLeaves() []*Attached {
+	var leaves []*Attached
+	var queue []*Attached
+
+	// for-rangeだとcのポインタをqueueに入れられないのでforで書く
+	for i := 0; i < len(r.Children.Attached); i++ {
+		queue = append(queue, &(r.Children.Attached[i]))
+
+	}
+
+	// 幅優先探索でleafを探す
+	for {
+		if len(queue) == 0 {
+			break
+		}
+		if len(queue[0].Children.Attached) > 0 {
+			for i := 0; i < len(queue[0].Children.Attached); i++ {
+				queue = append(queue, &(queue[0].Children.Attached[i]))
+			}
+			queue = queue[1:]
+			continue
+		}
+		leaves = append(leaves, queue[0])
+		queue = queue[1:]
+	}
+
+	return leaves
+}
+
 type Children struct {
 	Attached []Attached `json:"attached"`
 }
