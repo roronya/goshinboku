@@ -4,7 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
+	"github.com/roronya/goshinboku/jira"
 	"github.com/roronya/goshinboku/xmind"
 	"io"
 	"log"
@@ -61,12 +61,12 @@ func main() {
 	user := os.Getenv("JIRA_USER")
 	pass := os.Getenv("JIRA_PASSWORD")
 	server := os.Getenv("JIRA_SERVER")
-	client, err := NewClient(user, pass, server)
+	client, err := jira.NewClient(user, pass, server)
 	if err != nil {
 		log.Fatal(err)
 	}
 	for i := 0; i < len(leaves); i++ {
-		url, err := IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leaves[i].Title, "", "", "")
+		url, err := jira.IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leaves[i].Title, "", "", "")
 		if err != nil {
 			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leaves[i].Title, err)
 			continue
@@ -144,94 +144,4 @@ func write(zw *zip.Writer, file *zip.File) error {
 		return err
 	}
 	return nil
-}
-
-func NewClient(
-	username string,
-	password string,
-	baseUrl string,
-) (*jira.Client, error) {
-	tp := jira.BasicAuthTransport{
-		Username: username,
-		Password: password,
-	}
-	client, err := jira.NewClient(tp.Client(), baseUrl)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-// GetUser
-// emailをもとにUserオブジェクトを探して返す
-// emailに紐づくユーザーが見つからなかった場合はerrorを返す
-func GetUser(
-	client *jira.Client,
-	email string,
-) (*jira.User, error) {
-	users, _, err := client.User.Find(email)
-	if err != nil {
-		return nil, err
-	}
-	if len(users) == 0 {
-		return nil, fmt.Errorf("couldn't find a such user<%s>", email)
-	}
-	return &users[0], nil
-}
-
-// IssueCreate
-// client: NewClientによって作ったclient
-// project: JIRAのプロジェクト。存在するJIRAのプロジェクトを必ず渡す。存在しないJIRAのプロジェクトを渡すとエラーになる。
-// component: コンポーネント。設定しない場合は空文字を渡す。
-// epic: エピック。設定しない場合は空文字を渡す。
-// issueType: 現状はTaskのみ対応している。Task以外を渡すとエラーになる。
-// summary: JIRAのチケットのタイトルになる
-// assignee: アサインする人のアカウントIDを渡す。アカウントIDはGetUserによって取得できる。アサインしない場合は空文字を渡すと非アサイン状態になる。
-// reporter: アサインする人のアカウントIDを渡す。アカウントIDはGetUserによって取得できる。アサインしない場合は空文字を渡すとチケットを作った人が報告者になる。
-// description: 説明文
-func IssueCreate(
-	client *jira.Client,
-	project string,
-	component string,
-	epic string,
-	issueType string,
-	summary string,
-	assignee string,
-	reporter string,
-	description string,
-) (url string, err error) {
-	f := &jira.IssueFields{
-		Project: jira.Project{
-			Key: project,
-		},
-		Type: jira.IssueType{
-			Name: issueType,
-		},
-		Summary:     summary,
-		Description: description,
-	}
-	if component != "" {
-		f.Components = []*jira.Component{{Name: component}}
-	}
-	// see: https://github.com/andygrunwald/go-jira/issues/307
-	// FIXME: epicはcustomefieldとして作られていて、プロジェクトによって違う
-	if epic != "" {
-		f.Unknowns = map[string]interface{}{
-			"customfield_10006": epic,
-		}
-	}
-
-	if assignee != "" {
-		f.Assignee = &jira.User{AccountID: assignee}
-	}
-	if reporter != "" {
-		f.Reporter = &jira.User{AccountID: reporter}
-	}
-	i := jira.Issue{Fields: f}
-	issue, _, err := client.Issue.Create(&i)
-	if err != nil {
-		return "", err
-	}
-	baseURL := client.GetBaseURL()
-	return fmt.Sprintf("%sbrowse/%s", baseURL.String(), issue.Key), nil
 }
