@@ -11,6 +11,8 @@ import (
 	"os"
 )
 
+var dryrun = false
+
 /**
 xmindファイルの中にあるcontent.jsonを書き換えて元のxmindファイルに戻す。
 以下の手順で処理を行う。
@@ -58,22 +60,24 @@ func main() {
 
 	leaves := r.FindLeaves()
 
-	user := os.Getenv("JIRA_USER")
-	pass := os.Getenv("JIRA_PASSWORD")
-	server := os.Getenv("JIRA_SERVER")
-	client, err := jira.NewClient(user, pass, server)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for i := 0; i < len(leaves); i++ {
-		url, err := jira.IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leaves[i].Title, "", "", "")
+	if dryrun == false {
+		user := os.Getenv("JIRA_USER")
+		pass := os.Getenv("JIRA_PASSWORD")
+		server := os.Getenv("JIRA_SERVER")
+		client, err := jira.NewClient(user, pass, server)
 		if err != nil {
-			log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leaves[i].Title, err)
-			continue
+			log.Fatal(err)
 		}
-		fmt.Printf("created a ticket titled \"%s\": %s\n", leaves[i].Title, url)
-		// チケットのURLをXMindの葉に書き足す
-		leaves[i].Title = fmt.Sprintf("%s\nurl: %s\n", leaves[i].Title, url)
+		for i := 0; i < len(leaves); i++ {
+			url, err := jira.IssueCreate(client, r.Project, r.Component, r.Epic, "Task", leaves[i].Title, "", "", "")
+			if err != nil {
+				log.Printf("got an error creating a ticket titled \"%s\". error is below:\n%s", leaves[i].Title, err)
+				continue
+			}
+			fmt.Printf("created a ticket titled \"%s\": %s\n", leaves[i].Title, url)
+			// チケットのURLをXMindの葉に書き足す
+			leaves[i].Title = fmt.Sprintf("%s\nurl: %s\n", leaves[i].Title, url)
+		}
 	}
 
 	// 構造体からjsonに戻す
@@ -83,7 +87,13 @@ func main() {
 	}
 
 	// 3. 編集したcontent.jsonと残りのファイルで改めてzipに圧縮する
-	if err := save(zr.File, j); err != nil {
+	z, err := os.CreateTemp("", "new.xmind")
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(z.Name())
+	// defer os.Remove(z.Name())
+	if err := save(zr.File, j, z); err != nil {
 		log.Fatal(err)
 	}
 
@@ -92,24 +102,22 @@ func main() {
 	if err := os.Remove("./sample.xmind"); err != nil {
 		log.Fatal(err)
 	}
-	if err := os.Rename("./new.xmind", "./sample.xmind"); err != nil {
+	if err := os.Rename(z.Name(), "./sample.xmind"); err != nil {
 		log.Fatal(err)
 	}
 }
 
 /**
-元のxmindのFileと新しく作ったcontent.jsonから、新しいxmindファイルを作成する
+元のxmindのFileと新しく作ったcontent.jsonを新しいzipファイルに保存する
 */
-func save(files []*zip.File, c []byte) error {
-	z, err := os.Create("./new.xmind") // TODO: /tmpにユニークな名前で一時ファイルを作る
-	if err != nil {
-		return err
-	}
-
+func save(files []*zip.File, c []byte, z *os.File) error {
 	zw := zip.NewWriter(z)
 	defer zw.Close()
 
 	fw, err := zw.Create("content.json")
+	if err != nil {
+		return err
+	}
 	if _, err := fw.Write(c); err != nil {
 		return err
 	}
