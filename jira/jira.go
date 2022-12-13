@@ -41,7 +41,7 @@ func IssueCreate(
 	assignee string,
 	reporter string,
 	description string,
-) (url string, err error) {
+) (*jira.Issue, string, error) {
 	f := &jira.IssueFields{
 		Project: jira.Project{
 			Key: project,
@@ -72,8 +72,16 @@ func IssueCreate(
 	i := jira.Issue{Fields: f}
 	issue, _, err := client.Issue.Create(&i)
 	if err != nil {
-		return "", err
+		return nil, "", err
 	}
 	baseURL := client.GetBaseURL()
-	return fmt.Sprintf("%sbrowse/%s", baseURL.String(), issue.Key), nil
+	return issue, fmt.Sprintf("%sbrowse/%s", baseURL.String(), issue.Key), nil
+}
+
+func GetIssue(client *jira.Client, issueId string) (*jira.Issue, error) {
+	issue, _, err := client.Issue.Get(issueId, nil)
+	if err != nil {
+		return nil, err
+	}
+	return issue, nil
 }

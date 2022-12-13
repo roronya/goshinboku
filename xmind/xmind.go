@@ -1,6 +1,7 @@
 package xmind
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -88,9 +89,41 @@ type Attached struct {
 	Title         string   `json:"title"`
 	TitleUnedited bool     `json:"titleUnedited,omitempty"` // Decodeするときに、nullや空リストだったときにJSONから消したいキーはomitemptyをつける
 	Children      Children `json:"children,omitempty"`
-	Markers       []Marker `json:"makers,omitempty"`
+	Markers       []Marker `json:"markers,omitempty"`
+
+	// 下記はこのツールのために拡張したプロパティでcontent.jsonには含まれない
+	IssueId string
+}
+
+func (a *Attached) ParseTitle() {
+	data := strings.Split(a.Title, "\n")
+	for _, d := range data {
+		s := strings.Split(d, ":")
+		if s[0] == "issueId" {
+			a.IssueId = strings.TrimSpace(s[1])
+		}
+	}
+}
+func (a *Attached) SetIssueId(issueId string) error {
+	a.ParseTitle()
+	if a.IssueId != "" {
+		return fmt.Errorf("If IssueId is not empty string, this method don't write Attached.IssueId must be empty string")
+	}
+	a.Title = fmt.Sprintf("%s\nissueId: %s", a.Title, issueId)
+	a.IssueId = issueId
+	return nil
+}
+func (a *Attached) SetMakerAsTodo() {
+	a.Markers = []Marker{}
+}
+func (a *Attached) SetMarkerAsProgress() {
+	a.Markers = []Marker{{"tag-yellow"}}
+}
+
+func (a *Attached) SetMakerAsDone() {
+	a.Markers = []Marker{{"tag-green"}}
 }
 
 type Marker struct {
-	MarkerId string `json:"makerId"`
+	MarkerId string `json:"markerId"`
 }

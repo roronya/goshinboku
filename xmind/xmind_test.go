@@ -62,3 +62,55 @@ func TestRootTopic_FindLeaves(t *testing.T) {
 		}
 	}
 }
+
+func TestAttached_ParseTitle(t *testing.T) {
+	a := Attached{Title: "title\nissueId: JIRA-0000"}
+	a.ParseTitle()
+	if a.IssueId != "JIRA-0000" {
+		t.Fatalf("want JIRA-0000, but got %s", a.IssueId)
+	}
+
+	a = Attached{Title: "title"}
+	a.ParseTitle()
+	if a.IssueId != "" {
+		t.Fatalf("want empty string, but got %s", a.IssueId)
+	}
+
+}
+
+func TestAttached_SetMakerAs(t *testing.T) {
+	a := Attached{Markers: []Marker{}}
+	a.SetMarkerAsProgress()
+	if len(a.Markers) != 1 {
+		t.Fatalf("want len(a.Markers) = 1, but got %d", len(a.Markers))
+	}
+	if m := a.Markers[0].MarkerId; m != "tag-yellow" {
+		t.Fatalf("want tag-yellow, but got %s", m)
+	}
+	a.SetMakerAsDone()
+	if len(a.Markers) != 1 {
+		t.Fatalf("want len(a.Markers) = 1, but got %d", len(a.Markers))
+	}
+	if m := a.Markers[0].MarkerId; m != "tag-green" {
+		t.Fatalf("want tag-green, but got %s", m)
+	}
+	a.SetMakerAsTodo()
+	if len(a.Markers) != 0 {
+		t.Fatalf("want len(a.Markers) = 0, but got %d", len(a.Markers))
+	}
+}
+
+func TestAttached_SetIssueId(t *testing.T) {
+	a := Attached{Title: "title\nissueId: JIRA-0000"}
+	err := a.SetIssueId("JIRA-0001")
+	if err == nil {
+		t.Fatalf("want error, but got nil")
+	}
+	a = Attached{Title: "title"}
+	a.SetIssueId("JIRA-0000")
+	want := "title\nissueId: JIRA-0000"
+	if a.Title != want {
+		t.Fatalf("want %s, got %s", want, a.Title)
+	}
+
+}
